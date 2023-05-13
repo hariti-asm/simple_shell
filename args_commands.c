@@ -52,7 +52,7 @@ char *dup_chars(char *pathstr, int start, int stop)
  */
 char *check_file_in_path(info_s *inf, char *pathstr, char *cmd)
 {
-	int i = 0, curr_pos = 0;
+	int i = 0, pos = 0;
 	char *path;
 
 	if (!pathstr)
@@ -66,7 +66,7 @@ char *check_file_in_path(info_s *inf, char *pathstr, char *cmd)
 	{
 		if (!pathstr[i] || pathstr[i] == ':')
 		{
-			path = dup_chars(pathstr, curr_pos, i);
+			path = dup_chars(pathstr, pos, i);
 			if (!*path)
 				_strcat(path, cmd);
 			else
@@ -78,7 +78,7 @@ char *check_file_in_path(info_s *inf, char *pathstr, char *cmd)
 				return (path);
 			if (!pathstr[i])
 				break;
-			curr_pos = i;
+			pos = i;
 		}
 		i++;
 	}
