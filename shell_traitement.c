@@ -37,7 +37,7 @@ int main(int arc, char **arv)
 			return (EXIT_FAILURE);
 		}
 
-	t->ft_read = fd;
+	t->fd_read = ft;
 	}
 
 	gather_env(t);
