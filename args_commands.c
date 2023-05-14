@@ -3,16 +3,16 @@
 /**
  * is_executable - determines if a file is an executable command or not
  * @inf: the inf struct
- * @path: path to the file
+ * @pt: path to the file
  *
  * Return: 1 if true, 0 otherwise
  */
-bool is_executable(info_s *inf, char *path)
+bool is_executable(info_s *inf, char *pt)
 {
 	struct stat st;
 
 	(void)inf;
-	if (!path || stat(path, &st))
+	if (!pt || stat(path, &st))
 		return (0);
 
 	if (st.st_mode & S_IFREG)
@@ -24,38 +24,38 @@ bool is_executable(info_s *inf, char *path)
 
 /**
  * dup_chars - duplicates characters
- * @pathstr: the PATH string
+ * @ptstr: the PATH string
  * @start: starting index
  * @stop: stopping index
  *
  * Return: pointer to new buffer
  */
-char *dup_chars(char *pathstr, int start, int stop)
+char *dup_chars(char *ptstr, int start, int stop)
 {
 	static char buf[1024];
 	int i = 0, k = 0;
 
 	for (k = 0, i = start; i < stop; i++)
-		if (pathstr[i] != ':')
-			buf[k++] = pathstr[i];
+		if (ptstr[i] != ':')
+			buf[k++] = ptstr[i];
 	buf[k] = 0;
 	return (buf);
 }
 
 /**
- * check_file_in_path - finds this cmd in the PATH string
+ * check_file_in_pt - finds this cmd in the PATH string
  * @inf: the inf struct
- * @pathstr: the PATH string
+ * @ptstr: the PATH string
  * @cmd: the cmd to find
  *
- * Return: full path of cmd if found or NULL
+ * Return: full pt of cmd if found or NULL
  */
-char *check_file_in_path(info_s *inf, char *pathstr, char *cmd)
+char *check_file_in_pt(info_s *inf, char *pathstr, char *cmd)
 {
 	int i = 0, pos = 0;
-	char *path;
+	char *pt;
 
-	if (!pathstr)
+	if (!ptstr)
 		return (NULL);
 	if ((_strlen(cmd) > 2) && starts_with(cmd, "./"))
 	{
@@ -64,19 +64,19 @@ char *check_file_in_path(info_s *inf, char *pathstr, char *cmd)
 	}
 	while (1)
 	{
-		if (!pathstr[i] || pathstr[i] == ':')
+		if (!ptstr[i] || pathstr[i] == ':')
 		{
-			path = dup_chars(pathstr, pos, i);
-			if (!*path)
-				_strcat(path, cmd);
+			pt = dup_chars(pathstr, pos, i);
+			if (!*pt)
+				strcat(pt, cmd);
 			else
 			{
-				_strcat(path, "/");
-				_strcat(path, cmd);
+				strcat(pt, "/");
+				strcat(pt, cmd);
 			}
-			if (is_executable(inf, path))
-				return (path);
-			if (!pathstr[i])
+			if (is_executable(inf, pt))
+				return (pt);
+			if (!ptstr[i])
 				break;
 			pos = i;
 		}
