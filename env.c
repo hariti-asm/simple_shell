@@ -1,1 +1,1 @@
-hi
+get environement variables
