@@ -1,1 +1,2 @@
-get environement variables
+get environement variable
+just some chnages
