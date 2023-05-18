@@ -1,68 +1,97 @@
 #include "shell.h"
 
 /**
- * hsh - main shell loop
- * @info: the parameter & return info struct
- * @av: the argument vector from main()
+ * change_dr -> Changes the current working directory
  *
- * Return: 0 on success, 1 on error, or error code
+ * @info: Parameter
+ *
+ * Return: Depend Condition
  */
-int hsh(info_t *info, char **av)
-{
-	ssize_t r = 0;
-	int builtin_ret = 0;
 
-	while (r != -1 && builtin_ret != -2)
+int change_dr(info_t *info)
+{
+	char *s, *dir, buffer[1024];
+	int chdir_ret;
+
+	s = getcwd(buffer, 1024);
+	if (!s)
+		_puts("TODO: >>getcwd failure emsg here<<\n");
+	if (!info->argv[1])
 	{
-		clear_info(info);
-		if (interactive(info))
-			_puts("$ ");
-		_eputchar(BUF_FLUSH);
-		r = get_input(info);
-		if (r != -1)
+		dir = get_env(info, "HOME=");
+		if (!dir)
+			chdir_ret = chdir((dir = get_env(info, "PWD=")) ? dir : "/");
+		else
+			chdir_ret = chdir(dir);
+	}
+	else if (_strcmp(info->argv[1], "-") == 0)
+	{
+		if (!get_env(info, "OLDPWD="))
 		{
-			set_info(info, av);
-			builtin_ret = find_builtin(info);
-			if (builtin_ret == -1)
-				find_cmd(info);
-		}
-		else if (interactive(info))
+			_puts(s);
 			_putchar('\n');
-		free_info(info, 0);
+			return (1);
+		}
+		_puts(get_env(info, "OLDPWD=")), _putchar('\n');
+		chdir_ret = chdir((dir = get_env(info, "OLDPWD=")) ? dir : "/");
 	}
-	write_history(info);
-	free_info(info, 1);
-	if (!interactive(info) && info->status)
-		exit(info->status);
-	if (builtin_ret == -2)
+	else
+		chdir_ret = chdir(info->argv[1]);
+	if (chdir_ret == -1)
 	{
-		if (info->err_num == -1)
-			exit(info->status);
-		exit(info->err_num);
+		print_error(info, "can't cd to ");
+		put_string(info->argv[1]), put_char('\n');
 	}
-	return (builtin_ret);
+	else
+	{
+		set_env(info, "OLDPWD", get_env(info, "PWD="));
+		set_env(info, "PWD", getcwd(buffer, 1024));
+	} return (0);
 }
 
 /**
- * find_builtin - finds a builtin command
- * @info: the parameter & return info struct
+ * is_cmd -> checks if a path is a command
  *
- * Return: -1 if builtin not found,
- *			0 if builtin executed successfully,
- *			1 if builtin found but not successful,
- *			-2 if builtin signals exit()
+ * @info: Parameter
+ * @path: Parameter
+ *
+ * Return: Depend Condition
  */
-int find_builtin(info_t *info)
+
+int is_cmd(info_t *info, char *path)
+{
+	struct stat st;
+
+	(void)info;
+	if (!path || stat(path, &st))
+		return (0);
+
+	if (st.st_mode & S_IFREG)
+	{
+		return (1);
+	}
+	return (0);
+}
+
+/**
+ * find_bulting -> Finds a builtin command
+ *
+ * @info: Parameter
+ *
+ * Return: Depend Condition
+ */
+
+int find_bulting(info_t *info)
 {
 	int i, built_in_ret = -1;
 	builtin_table builtintbl[] = {
-		{"exit", _myexit},
-		{"env", _myenv},
-		{"help", _myhelp},
-		{"history", _myhistory},
-		{"setenv", _mysetenv},
-		{"unsetenv", _myunsetenv},
-		{"cd", _mycd},
+		{"exit", my_exit},
+		{"env", my_env},
+		{"help", my_help},
+		{"history", my_history},
+		{"setenv", my_setenv},
+		{"unsetenv", myunset_env},
+		{"cd", change_dr},
 		{"alias", _myalias},
 		{NULL, NULL}
 	};
@@ -78,12 +107,12 @@ int find_builtin(info_t *info)
 }
 
 /**
- * find_cmd - finds a command in PATH
- * @info: the parameter & return info struct
+ * find_cmnd -> Finds a command in the path
  *
- * Return: void
+ * @info: Parameter
  */
-void find_cmd(info_t *info)
+
+void find_cmnd(info_t *info)
 {
 	char *path = NULL;
 	int i, k;
@@ -100,17 +129,17 @@ void find_cmd(info_t *info)
 	if (!k)
 		return;
 
-	path = find_path(info, _getenv(info, "PATH="), info->argv[0]);
+	path = find_path(info, get_env(info, "PATH="), info->argv[0]);
 	if (path)
 	{
 		info->path = path;
-		forking(info);
+		run_cmnd(info);
 	}
 	else
 	{
-		if ((interactive(info) || _getenv(info, "PATH=")
+		if ((interactive(info) || get_env(info, "PATH=")
 			|| info->argv[0][0] == '/') && is_cmd(info, info->argv[0]))
-			forking(info);
+			run_cmnd(info);
 		else if (*(info->arg) != '\n')
 		{
 			info->status = 127;
@@ -118,29 +147,24 @@ void find_cmd(info_t *info)
 		}
 	}
 }
-void error_function(char *msg)
-{
-	fprintf(stderr, "Error:%s\n", msg);
-
-}
 
 /**
- * forking - forks a an exec thread to run cmd
- * @info: the parameter & return info struct
+ * run_cmnd -> Runs a command
  *
- * Return: void
+ * @info: Parameter
  */
-void forking(info_t *info)
-{
-	pid_t cipd;
 
-	cipd = fork();
-	if (cipd == -1)
+void run_cmnd(info_t *info)
+{
+	pid_t child_pid;
+
+	child_pid = fork();
+	if (child_pid == -1)
 	{
-		error_function("forking error");
+		perror("Error:");
 		return;
 	}
-	if (cipd == 0)
+	if (child_pid == 0)
 	{
 		if (execve(info->path, info->argv, get_environ(info)) == -1)
 		{
@@ -149,7 +173,6 @@ void forking(info_t *info)
 				exit(126);
 			exit(1);
 		}
-		/* TODO: PUT ERROR FUNCTION */
 	}
 	else
 	{
