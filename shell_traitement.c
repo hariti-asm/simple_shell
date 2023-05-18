@@ -40,7 +40,7 @@ int main(int arc, char **arv)
 	t->fd_read = ft;
 	}
 
-	gather_env(t);
+	lst_env(t);
 	read_history(t);
 	shell_main(t, arv);
 

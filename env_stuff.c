@@ -99,14 +99,14 @@ int set_env(info_t *info, char *var, char *value)
 
 
 /**
- * list_envr -> Creates a linked list of the environment
+ * lst_env -> Creates a linked list of the environment
  *
  * @info: Pointer
  *
  * Return: Depend Condition
  */
 
-int list_envr(info_t *info)
+int lst_env(info_t *info)
 {
 	list_t *node = NULL;
 	size_t i;
