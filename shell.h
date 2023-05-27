@@ -1,196 +1,192 @@
 #ifndef SHELL_H
 #define SHELL_H
 
-#include <fcntl.h>
-#include <math.h>
-#include <dirent.h>
-#include <limits.h>
-#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
-#include <stdint.h>
-#include <stdbool.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
-#include <unistd.h>
-#include <stdarg.h>
+#include <limits.h>
+#include <fcntl.h>
+#include <signal.h>
 #include <errno.h>
 
-#define BUFFER_SIZE_READ 1024
-#define BUFFER_SIZE_WRITE 1024
-#define MAX_WORD_COUNT 100
-#define NEG_ONE -1
-#define REG_FLAG 0
-#define OR_FLAG 1
-#define AND_FLAG 2
-#define CHAIN_FLAG 3
-#define BAS_CHANGE_LOWER 1
-#define BAS_CHANGE_UNSIG 2
-#define USE_GETLINE 0
+#define readBuf_SIZE 1024
+#define WRITE_BUF_SIZE 1024
+#define BUF_FLUSH -1
+#define CMD_NORM 0
+#define CMD_OR 1
+#define CMD_AND 2
+#define CMD_CHAIN 3
+#define CONVERT_LOWERCASE 1
+#define CONVERT_UNSIGNED 2
+#define USEgetLine 0
 #define USE_STRTOK 0
-#define HIST_FILE_NAME ".ss_history"
-#define HIST_SIZE_MAX 4096
-#define SET_INFO							\
-	{										\
-		NULL, NULL, NULL, 0, 0, 0, 0,		\
-		NULL, NULL, NULL, NULL, NULL,		\
-		0, 0, NULL, 0, 0, 0					\
-	}
+#define HIST_FILE ".shell_history"
+#define HIST_MAX 4096
+#define INFO_INIT {\
+	NULL, NULL, NULL, \
+	0, 0, 0, \
+	0, NULL, NULL, \
+	NULL, NULL, NULL, \
+	0, 0, NULL, \
+	0, 0, 0 \
+}
+
 
 extern char **environ;
 
 /**
- * struct ListNode - singly linked list
+ * struct liststr - singly linked list
  * @num: the number field
  * @str: a string
  * @next: points to the next node
  */
-typedef struct ListNode
+
+typedef struct liststr
 {
 	int num;
 	char *str;
-	struct ListNode *next;
-} list_s;
+	struct liststr *next;
+} list_t;
 
 /**
- * struct InfoNode - contains simulated arguments for a function pointer,
- *					 allowing for a consistent function prototype
- * @arg: a string generated from getline that holds arguments
- * @argv: an array of strings generated from @arg
- * @path: the path string for the current command
- * @argc: the number of arguments
- * @lines: the number of errors encountered
- * @error_code: the exit() error code
- * @lc_flag: a flag indicating whether this line of input should be counted
- * @prog_name: the name of the program's file
- * @env: a linked list representing a local copy of the environment variables
- * @environ: a custom-modified copy of the environ from the linked list env
- * @history: the node for the command history
- * @alias: the node for the command alias
- * @env_changed: a flag that indicates whether environ has been changed
- * @status: the return status of the most recent executed command
- * @sep_buff: the address of the pointer to sep_buff, used for chaining
- * @sep_buff_kind: the type of command buffer (CMD_type ||, &&, ;)
- * @fd_read: the file descriptor used for reading line input
- * @hist_lines: the number of lines in the history
+ *struct passinfo - contains pseudo-arguements to pass into a function,
+ *		allowing uniform prototype for function pointer struct
+ *@arg: a string generated from getline containing arguements
+ *@argv: an array of strings generated from arg
+ *@path: a string path for the current command
+ *@argc: the argument count
+ *@line_count: the error count
+ *@err_num: the error code for exit()s
+ *@linecount_flag: if on count this line of input
+ *@fname: the program filename
+ *@env: linked list local copy of environ
+ *@environ: custom modified copy of environ from LL env
+ *@history: the history node
+ *@alias: the alias node
+ *@env_changed: on if environ was changed
+ *@status: the return status of the last exec'd command
+ *@cmd_buf: address of pointer to cmd_buf, on if chaining
+ *@cmd_buf_type: CMD_type ||, &&, ;
+ *@readfd: the fd from which to read line input
+ *@histcount: the history line number count
  */
 
-typedef struct InfoNode
+typedef struct passinfo
 {
 	char *arg;
 	char **argv;
 	char *path;
 	int argc;
-	size_t lines;
-	int error_code;
-	int lc_flag;
-	char *prog_name;
-	list_s *env;
-	list_s *history;
-	list_s *alias;
+	unsigned int line_count;
+	int err_num;
+	int linecount_flag;
+	char *fname;
+	list_t *env;
+	list_t *history;
+	list_t *alias;
 	char **environ;
 	int env_changed;
 	int status;
 
-	char **sep_buff;
-	int sep_buff_kind;
-	int fd_read;
-	int hist_lines;
-} info_s;
+	char **cmd_buf;
+	int cmd_buf_type;
+	int readfd;
+	int histcount;
+} info_t;
 
 /**
- * struct builtin - contains a builtin string and related function
- * @type: the builtin command flag
- * @func: the function
+ *struct builtin - contains a builtin string and related function
+ *@type: the builtin command flag
+ *@func: the function
  */
 
 typedef struct builtin
 {
 	char *type;
-	int (*func)(info_s *);
-} builtin_commands;
+	int (*func)(info_t *);
+} builtin_table;
 
-int shell_main(info_s *info, char **av);
-int write_char(char c, int fd);
-int write_chars(char *str, int fd);
-int _strlen(char *s);
-int _strcmp(char *s1, char *s2);
-int putchar_err(char);
-int _putchar(char);
-int _isalpha(int);
-int _atoi(char *);
-int err_num(char *);
-int handle_exit(info_s *);
-int handle_cd(info_s *);
-int handle_help(info_s *);
-int handle_history(info_s *);
-int handle_alias(info_s *);
-int _getline(info_s *, char **, size_t *);
-int _printenv(info_s *);
-int check_setenv(info_s *);
-int check_unsetenv(info_s *);
-int _unsetenv(info_s *, char *);
-int _setenv(info_s *, char *, char *);
-void puts_err(char *);
-void _puts(char *);
+int shellLoop(info_t *, char **);
+int findBuiltin(info_t *);
+void findCommand(info_t *);
+void runCommand(info_t *info);
+int isCommand(info_t *, char *);
+char *duplicateChars(char *, int, int);
+char *findPath(info_t *, char *, char *);
+int loophsh(char **);
+void printString(char *);
+int printChar(char);
+int printCharToFD(char c, int fd);
+int printStringToFD(char *str, int fd);
+int _strlen(char *);
+int _strcmp(char *, char *);
+char *startsWith(const char *, const char *);
 char *_strcat(char *, char *);
 char *_strcpy(char *, char *);
-char *_strdup(const char *);
+char *_strDuplicate(const char *);
+void _puts(char *);
+int _putchar(char);
 char *_strncpy(char *, char *, int);
 char *_strncat(char *, char *, int);
 char *_strchr(char *, char);
+char **splitString(char *, char *);
 char *_memset(char *, char, unsigned int);
-void *_realloc(void *ptr, unsigned int old_size, unsigned int new_size);
-char *_getenv(info_s *, const char *);
-char *starts_with(const char *, const char *);
-char *dup_chars(char *, int, int);
-char *check_file_in_path(info_s *info, char *pathstr, char *cmd);
-char *change_base(long int, int, int);
-char *read_hist(info_s *info);
-char **get_environ(info_s *);
-char **strtow(char *, char *);
-char **list_to_vector(list_s *);
-void check_command(info_s *);
-void create_process(info_s *);
-void handle_sigint(int);
-void clear_info(info_s *);
-void set_info(info_s *, char **);
-void free_info(info_s *, int);
-void free_vector(char **);
-void print_error(info_s *, char *);
-void handle_comments(char *);
-void free_list(list_s **);
-void check_chain(info_s *t, char *buf, size_t *p, size_t i, size_t len);
-int handle_builtin(info_s *);
-bool is_executable(info_s *, char *);
-int loophsh(char **);
-int bfree(void **);
-int from_terminal(info_s *);
-int print_dec(int, int);
-int gather_env(info_s *);
-int create_history(info_s *info);
-int read_history(info_s *info);
-int update_history(info_s *info, char *buf, int linecount);
-int renumber_history(info_s *info);
-int delete_node_at_index(list_s **, unsigned int);
-bool is_chain(info_s *, char *, size_t *);
-int change_alias(info_s *);
-int change_v(info_s *);
-int change_string(char **, char *);
-list_s *add_node_start(list_s **head, const char *str, int num);
-list_s *add_node_end(list_s **head, const char *str, int num);
-list_s *node_str_start(list_s *, char *, char);
-size_t print_list_str(const list_s *);
-size_t _listlen(const list_s *);
-size_t print_list(const list_s *);
-ssize_t get_input(info_s *);
-ssize_t get_node_index(list_s *, list_s *);
-char **split_string(char *str, char *separators, size_t *word_count);
-int words_count(char *str, char *separators, unsigned int *arr);
-void set_zeros(unsigned int *arr, size_t size);
-void set_nulls(char *arr, size_t size);
-bool is_delimiter(char c, char *delimiters);
+void freeStringArray(char **);
+void *reallocateMemory(void *, unsigned int, unsigned int);
+int freePointer(void **);
+int isInteractiveMode(info_t *);
+int isDelimiter(char, char *);
+int _isalpha(int);
+int convertStringToInt(char *);
+int errAtoi(char *);
+void printError(info_t *, char *);
+int printDecimal(int, int);
+char *convertNumber(long int, int, int);
+void removeComments(char *);
+int myExit(info_t *);
+int changeDirectory(info_t *info);
+int myHelp(info_t *);
+int myHistory(info_t *);
+int myAlias(info_t *);
+ssize_t getInput(info_t *);
+int getLine(info_t *, char **, size_t *);
+void sigintHandler(int);
+void clearInfo(info_t *);
+void setInfo(info_t *, char **);
+void freeInfo(info_t *, int);
+char *getEnvVariable(info_t *, const char *);
+int myEnv(info_t *);
+int mySetEnv(info_t *);
+int myUnsetEnv(info_t *);
+int envList(info_t *);
+char **getEnviron(info_t *);
+int unsetEnv(info_t *, char *);
+int setEnv(info_t *, char *, char *);
+char *getHistoryFile(info_t *info);
+int writeHistory(info_t *info);
+int readHistory(info_t *info);
+int buildHistoryList(info_t *info, char *buf, int linecount);
+int renumberHistory(info_t *info);
+list_t *addNode(list_t **, const char *, int);
+list_t *endNode(list_t **, const char *, int);
+size_t printListStr(const list_t *);
+int deleteNode(list_t **, unsigned int);
+ssize_t inputBuf(info_t *info, char **buf, size_t *len);
+void freeLinkedList(list_t **);
+size_t listLen(const list_t *);
+char **listToStrings(list_t *);
+size_t printList(const list_t *);
+list_t *nodeStartsWith(list_t *, char *, char);
+ssize_t getNodeIndex(list_t *, list_t *);
+int isChain(info_t *, char *, size_t *);
+void checkChain(info_t *, char *, size_t *, size_t, size_t);
+int replaceAlias(info_t *);
+int replaceVariables(info_t *);
+int replaceString(char **, char *);
+char **_splitString(char *str, char d);
 
-#endif /* SHELL_H */
+#endif
